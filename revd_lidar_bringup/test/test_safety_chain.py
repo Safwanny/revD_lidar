@@ -20,7 +20,8 @@ navigation_basic, spawned at (SPAWN) facing +X, in the open corner between
 the interior wall and the north-east walls. Commands go in on the twist_mux
 inputs above the speed cap; Gazebo's true pose (tests may read it) measures
 the gap between the hull and the walls. In order: the e-stop lock holds the
-robot, teleop outranks Nav2 and Nav2 the policy, then twice (facing +X, then
+robot, teleop outranks Nav2 and Nav2 the policy, /lidar/ok switches the
+governor to tof_only mode and back at runtime, then twice (facing +X, then
 turned to face -X, so every face and two opposite corners lead) it drives to
 the east wall, slides along it (slowed, never stopped, by the wall beside
 it) into the north-east corner, escapes the corner both ways, and drives
@@ -42,6 +43,7 @@ from launch_ros.substitutions import FindPackageShare
 import launch_testing
 from nav_msgs.msg import Odometry
 import rclpy
+from rclpy.qos import DurabilityPolicy, QoSProfile
 from std_msgs.msg import Bool
 
 SPAWN = (3.0, 1.0)
@@ -82,6 +84,7 @@ class TestSafetyChain(unittest.TestCase):
         cls.speed = 0.0
         cls.offset = None
         cls.mux = None
+        cls.governed = None
         cls.node.create_subscription(
             Odometry, '/ground_truth/odom', cls.on_truth, 10)
         cls.node.create_subscription(
@@ -91,7 +94,13 @@ class TestSafetyChain(unittest.TestCase):
             name: cls.node.create_publisher(
                 TwistStamped, f'/cmd_vel_{name}', 10)
             for name in ('teleop', 'nav', 'policy')}
+        cls.node.create_subscription(
+            TwistStamped, '/mobile_base_controller/reference',
+            lambda message: setattr(cls, 'governed', message.twist), 10)
         cls.e_stop = cls.node.create_publisher(Bool, '/e_stop', 10)
+        cls.lidar_ok = cls.node.create_publisher(
+            Bool, '/lidar/ok',
+            QoSProfile(depth=1, durability=DurabilityPolicy.TRANSIENT_LOCAL))
 
     @classmethod
     def tearDownClass(cls):
@@ -145,7 +154,8 @@ class TestSafetyChain(unittest.TestCase):
             self.spin(0.2)
 
     def drive(self, vx, vy, seconds, wz=0.0, until_stopped=False):
-        """Publish teleop at 20 Hz; return the top speed and smallest gap.
+        """
+        Publish teleop at 20 Hz; return the top speed and smallest gap.
 
         (vx, vy) is in the world frame, turned into the body frame by the
         true heading, so a run goes the same way whatever the robot faces.
@@ -257,6 +267,19 @@ class TestSafetyChain(unittest.TestCase):
             self.assertAlmostEqual(self.mux.linear.x, -0.1,
                                    msg=f'{winner} did not win')
         self.assertLess(self.pose[0], start[0] - 0.05, 'did not back up')
+
+        # LiDAR lost: only axis moves. Back to normal once it is ok again.
+        for ok, vy in ((False, 0.0), (True, -0.1)):
+            self.lidar_ok.publish(Bool(data=ok))
+            self.spin(0.5)
+            end = time.monotonic() + 0.5
+            while time.monotonic() < end:
+                self.publish('teleop', -0.2, -0.1)
+                self.spin(0.05)
+            self.settle()
+            self.assertAlmostEqual(self.governed.linear.y, vy, places=3,
+                                   msg=f'/lidar/ok {ok}: wrong mode')
+            self.assertAlmostEqual(self.governed.linear.x, -0.2, places=3)
 
         self.wall_runs('facing +x')
         # Clear of the walls now: turning is free.

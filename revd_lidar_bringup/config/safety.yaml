@@ -28,8 +28,10 @@ twist_mux:
         timeout: 0.0
         priority: 255
 
-# revd_lidar_tools safety_governor: slows only motion that closes on a ToF
-# point, so it can stop min_gap short; moving away is never limited.
+# revd_lidar_safety safety_governor: slows only motion that closes on a ToF
+# or LiDAR point, so it can stop min_gap short; moving away is never limited.
+# tof_only mode (tof_only: true, or /lidar/ok false, latched) drops the LiDAR
+# and allows only axis moves and clear standing spins.
 safety_governor:
   ros__parameters:
     # Hull with wheels: body 296.9 x 168.1 mm, wheel outer faces at
@@ -65,6 +67,7 @@ safety_governor:
     # face's 60 deg view up close.
     memory: 3.0
     # A face silent past slow_after: motion toward it creeps. Past
-    # stale_after: that motion and turning stop, the rest creeps.
+    # stale_after: that motion and turning stop, the rest creeps. A silent
+    # LiDAR is a face toward every direction (normal mode only).
     slow_after: 0.2
     stale_after: 0.75

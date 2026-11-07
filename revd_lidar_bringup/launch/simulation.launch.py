@@ -384,7 +384,7 @@ def generate_launch_description():
             output='screen',
         ),
         Node(
-            package='revd_lidar_tools',
+            package='revd_lidar_safety',
             executable='safety_governor',
             name='safety_governor',
             parameters=[safety_config, sim_time],

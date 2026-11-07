@@ -33,6 +33,5 @@ setup(
         'odom_eval = revd_lidar_tools.odom_eval:main',
         'odom_eval_plot = revd_lidar_tools.odom_eval_plot:main',
         'imu_bias = revd_lidar_tools.imu_bias:main',
-        'safety_governor = revd_lidar_tools.safety_governor:main',
     ]},
 )

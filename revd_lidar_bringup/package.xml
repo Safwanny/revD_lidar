@@ -19,6 +19,7 @@
   <exec_depend>mecanum_drive_controller</exec_depend>
   <exec_depend>revd_lidar_description</exec_depend>
   <exec_depend>revd_lidar_gazebo</exec_depend>
+  <exec_depend>revd_lidar_safety</exec_depend>
   <exec_depend>revd_lidar_tools</exec_depend>
   <exec_depend>robot_localization</exec_depend>
   <exec_depend>robot_state_publisher</exec_depend>
