@@ -42,7 +42,7 @@ Build the five packages:
 cd ~/ros2_ws && colcon build --symlink-install --packages-select revd_lidar_description revd_lidar_gazebo revd_lidar_tools revd_lidar_safety revd_lidar_bringup --cmake-args -DPython3_EXECUTABLE=/usr/bin/python3
 ```
 
-Start Gazebo and RViz (worlds: `navigation_basic` (default), `my_world`, `failsafe_course`; `gui:=false` runs Gazebo headless, `seed:=<n>` changes the noise draw):
+Start Gazebo and RViz (worlds: `navigation_basic` (default), `my_world`, `failsafe_course`, `house`; `gui:=false` runs Gazebo headless, `seed:=<n>` changes the noise draw):
 
 ```bash
 source ~/ros2_ws/install/setup.bash && ros2 launch revd_lidar_bringup simulation.launch.py world:=my_world
@@ -104,6 +104,44 @@ Plot a run:
 
 ```bash
 ros2 run revd_lidar_tools odom_eval_plot $HOME/ros2_ws/src/revD_lidar/data/odom_eval
+```
+
+## Mapping (slam_toolbox)
+
+Worlds: `house` (20 × 15 m, rebuilt by `revd_lidar_gazebo/scripts/generate_house.py`; `test_worlds.py` fails if the SDF is stale) and the three above. Map by hand: start with `slam:=true`, drive with teleop, then save:
+
+```bash
+ros2 launch revd_lidar_bringup simulation.launch.py world:=house slam:=true
+```
+
+```bash
+mkdir -p $HOME/ros2_ws/src/revD_lidar/data/maps && ros2 run nav2_map_server map_saver_cli -f $HOME/ros2_ws/src/revD_lidar/data/maps/house
+```
+
+Scripted run instead of teleop: start the same launch with the world's `spawn` from `revd_lidar_tools/config/slam_routes.yaml`, then `slam_eval` drives the route through the safety chain, writes `truth.tum`, `slam.tum`, `ekf.tum`, saves `map.pgm`/`map.yaml` and exits 0 when the route is done:
+
+```bash
+ros2 run revd_lidar_tools slam_eval --ros-args -p use_sim_time:=true -p world:=house -p output_dir:=$HOME/ros2_ws/src/revD_lidar/data/slam/house
+```
+
+Reference grid (the world's walls and legs cut at the scan-plane height of `laser_link`, as a Nav2 map) and the map score against it (`--spawn` = the spawn pose; `--plot` draws both):
+
+```bash
+ros2 run revd_lidar_tools world_grid $(ros2 pkg prefix revd_lidar_gazebo)/share/revd_lidar_gazebo/worlds/house.sdf data/slam/house/reference
+```
+
+```bash
+ros2 run revd_lidar_tools map_score data/slam/house/map.yaml data/slam/house/reference.yaml --spawn 0 0 0 --plot data/slam/house/map_vs_reference.png
+```
+
+Trajectory error with evo (pinned, run through `uvx`; `-a` aligns the map frame to the world):
+
+```bash
+uvx --from evo==1.31.1 evo_ape tum data/slam/house/truth.tum data/slam/house/slam.tum -a --t_max_diff 0.05
+```
+
+```bash
+uvx --from evo==1.31.1 evo_rpe tum data/slam/house/truth.tum data/slam/house/slam.tum -a --t_max_diff 0.05 --delta 1 --delta_unit m
 ```
 
 ## Tests

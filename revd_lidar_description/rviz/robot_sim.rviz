@@ -9,6 +9,12 @@ Visualization Manager:
       Plane Cell Count: 20
       Name: Grid
       Value: true
+    - Class: rviz_default_plugins/Map
+      Name: Map (slam:=true)
+      Topic:
+        Durability Policy: Transient Local
+        Value: /map
+      Value: true
     - Class: rviz_default_plugins/RobotModel
       Description Source: Topic
       Description Topic:

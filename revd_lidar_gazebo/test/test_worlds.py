@@ -32,6 +32,7 @@ EXPECTED_WORLDS = {
     'navigation_basic.sdf',
     'failsafe_course.sdf',
     'my_world.sdf',
+    'house.sdf',
 }
 
 
@@ -64,6 +65,13 @@ def main():
             text=True,
         )
         assert result.returncode == 0, result.stdout + result.stderr
+
+    generated = subprocess.run(
+        [sys.executable, str(package / 'scripts' / 'generate_house.py'),
+         '/dev/stdout'],
+        check=True, capture_output=True, text=True).stdout
+    assert generated == (worlds / 'house.sdf').read_text(encoding='utf-8'), (
+        'house.sdf is stale: rerun scripts/generate_house.py')
 
     cmake = (package / 'CMakeLists.txt').read_text(encoding='utf-8')
     assert 'install(DIRECTORY worlds DESTINATION share/${PROJECT_NAME})' in cmake
