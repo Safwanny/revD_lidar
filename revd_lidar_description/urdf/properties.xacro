@@ -1,0 +1,165 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+  <!-- Mecanum 01 Rev D W11.25 (no turret) with an LDRobot D500 on the deck.
+       REP-103: +X forward, +Y left, +Z up, SI units. Every hardware number
+       lives here with its source; the meshes come from
+       scripts/import_meshes.py, which checks the wheel numbers against the
+       CAD. Sources: W11.25 06_verification/clearance_check.txt and
+       02_cad/scripts/build_mecanum_01_fusion.py. -->
+
+  <!-- Hull bounding box (clearance_check.txt: 296.9 x 168.1 x 49.0, underside
+       11.6; the rim at 60.56 is build script TOP_Z). The underside sits
+       11.56 mm off the ground. -->
+  <xacro:property name="hull_length" value="0.2969"/>
+  <xacro:property name="hull_width" value="0.1681"/>
+  <xacro:property name="hull_height" value="0.049"/>
+  <xacro:property name="hull_bottom_z" value="0.01156"/>
+
+  <!-- 60 mm printed mecanum wheel: roller envelope 59.92, 31.5 over the
+       plates. FL and RR are hand A, FR and RL hand B. -->
+  <xacro:property name="wheel_radius" value="0.02996"/>
+  <xacro:property name="wheel_width" value="0.0315"/>
+  <!-- wheelbase: front-to-rear axle spacing (build script WX = 105, AZ =
+       29.96); wheel_separation: track, roller crowns at y = +-93.26 in the
+       assembly mesh. -->
+  <xacro:property name="wheelbase" value="0.210"/>
+  <xacro:property name="wheel_separation" value="0.1865"/>
+
+  <!-- base_link sits on the axle line, so the wheel joints are at z = 0. -->
+  <xacro:property name="base_link_height" value="${wheel_radius}"/>
+
+  <!-- JGY370 12 V 150 rpm worm motor, direct drive: 15.7 rad/s no-load,
+       0.47 m/s at the wheel (Seeed 108990007 datasheet, 160 rpm variant:
+       load speed 128 rpm, so expect ~0.40 m/s loaded). -->
+  <xacro:property name="wheel_max_velocity" value="15.7"/>
+  <xacro:property name="wheel_joint_damping" value="0.001"/>
+  <xacro:property name="wheel_joint_friction" value="0.001"/>
+
+  <!-- Mass estimate from the BOM: 4 x JGY370 (~0.14), printed hull and deck,
+       battery and electronics; the D500 has its own link. The wheel carries
+       its drive line too (rollers, hub, axle, coupler, motor shaft). Calibration knobs, not measurements:
+       weigh the built robot and put the numbers here. -->
+  <xacro:property name="body_mass" value="1.40"/>
+  <xacro:property name="body_com_z" value="0.030"/>
+  <xacro:property name="wheel_mass" value="0.08"/>
+
+  <!-- Deck plate top face: build script SEAT_Z 54.06 + PLATE_T 4. The plate
+       is 137.4 x 85.4 x 4 mm, with the full 28-insert M3 grid: 20 mm pitch,
+       rows at x = 60 .. -60 mm, columns at y = +-10 and +-30 mm. -->
+  <xacro:property name="deck_top_z" value="0.05806"/>
+
+  <!-- ToF ring: four VL53L7CX on Pololu #3418 carriers, one at the centre
+       of each hull face. Since Rev D v3 every hull wall leans 11.25 deg
+       (WALL_SLANT in the build script; plane fits of meshes/rev_d/body.stl
+       agree to 0.001 deg), its outward normal tipped down by that much. That
+       is exactly tof_pitch, so the carriers sit flush on the walls with no
+       wedge. -->
+  <!-- Carrier, from Pololu's dimension drawing (irs18a, 2023-07-26): PCB
+       12.7 x 17.8 x 1.02 mm, components at most 1.6 mm above it, 0.5 g.
+       It stands with its long side vertical. The sensor centre is 7.6 mm
+       from the header edge and 8.8 mm up from the bottom edge, so the board
+       centre sits 1.25 mm to the header side of the aperture and 0.1 mm
+       above it. For the CAD: 2 x 2.18 mm holes (M2), 2.5 mm in from the
+       non-header edge and from top and bottom; 8 header pads at 2.54 mm
+       pitch, 1.27 mm in from the other edge. -->
+  <xacro:property name="tof_board_width" value="0.0127"/>
+  <xacro:property name="tof_board_length" value="0.0178"/>
+  <xacro:property name="tof_pcb_thickness" value="0.00102"/>
+  <xacro:property name="tof_board_offset_y" value="-0.00125"/>
+  <xacro:property name="tof_board_offset_z" value="0.0001"/>
+  <xacro:property name="tof_mass" value="0.0005"/>
+  <!-- VL53L7CX package, 6.4 x 3.0 mm, long side across the board, standing
+       the drawing's 1.6 mm above the PCB. -->
+  <xacro:property name="tof_module_length" value="0.0064"/>
+  <xacro:property name="tof_module_width" value="0.003"/>
+  <xacro:property name="tof_module_height" value="0.0016"/>
+  <xacro:property name="tof_board_thickness"
+                  value="${tof_pcb_thickness + tof_module_height}"/>
+  <!-- 8 x 8 zones over 60 x 60 degrees; Gazebo rays sit at zone centres,
+       half a zone inside the field edge. -->
+  <xacro:property name="tof_fov" value="${radians(60)}"/>
+  <xacro:property name="tof_zones" value="8"/>
+  <xacro:property name="tof_zone_angle" value="${tof_fov / tof_zones}"/>
+  <xacro:property name="tof_half_span"
+                  value="${tof_fov / 2.0 - tof_zone_angle / 2.0}"/>
+  <!-- 2 m, not the 3.5 m headline: that is 4 x 4 only. At 8 x 8 / 15 Hz a
+       white target in the dark reaches 2.0 m typical (DS13865 Table 18).
+       Range noise and zone dropout are added by rev_base_tools tof_sim
+       (config/tof_sim.yaml, which repeats this range), not by Gazebo. -->
+  <xacro:property name="tof_min_range" value="0.02"/>
+  <xacro:property name="tof_max_range" value="2.0"/>
+  <xacro:property name="tof_range_resolution" value="0.001"/>
+  <xacro:property name="tof_update_rate" value="15.0"/>
+  <!-- Zone rows sit at -26.25 + 7.5 * row deg off the axis, so pitching
+       down 1.5 zones (11.25 deg) puts row 5 exactly level. Calibration knob:
+       measure the printed mount and put the angle here. -->
+  <xacro:property name="tof_pitch" value="${1.5 * tof_zone_angle}"/>
+  <!-- Aperture 32 mm off the ground, mid height of the faces. The faces are
+       planes n.p = d (mm, ground frame): front 0.98079 x - 0.19509 z = 135.303,
+       side 0.98079 y - 0.19509 z = 72.533, solved here at that height. -->
+  <xacro:property name="tof_ground_z" value="0.032"/>
+  <xacro:property name="tof_z" value="${tof_ground_z - base_link_height}"/>
+  <xacro:property name="tof_front_x"
+                  value="${(0.135303 + 0.19509 * tof_ground_z) / 0.98079}"/>
+  <xacro:property name="tof_side_y"
+                  value="${(0.072533 + 0.19509 * tof_ground_z) / 0.98079}"/>
+
+  <!-- LDRobot D500 (STL-19P), STL-19P datasheet v1.0 sec 4.2 / 5.1:
+       54.00 x 46.29 x 35.0 mm, 45 g, optical window centre 7.8 mm below the
+       top, so the scan plane is 27.2 mm above its base. The base sits
+       straight on the deck plate, rotation axis on the centreline at x = 0,
+       near the turn centre, where motion distortion of the scan is least;
+       scan plane 58.06 + 27.2 = 85.26 mm off the floor.
+       Mounting: its 3 x 2.5 mm holes (46.8 mm across) do not land on the
+       M3 grid. Planned: drill three 2.7 mm holes through the plate at the
+       D500 pattern, M2.5 screws down through the D500 base, nuts under the
+       plate; the y = +-23.4 holes clear the +-10 / +-30 inserts by about
+       3 mm edge to edge. Not built yet: check the x positions against the
+       grid rows before drilling. A printed adapter instead raises the plane
+       by its thickness: put it in lidar_adapter_t.
+       lidar_yaw is the datasheet "forward" mark to +X; roll and pitch are
+       calibration knobs for the measured beam tilt (datasheet pitch error
+       0.5-2 deg). -->
+  <xacro:property name="lidar_length" value="0.054"/>
+  <xacro:property name="lidar_width" value="0.04629"/>
+  <xacro:property name="lidar_height" value="0.035"/>
+  <!-- Visual only, shaped like mobile_base's D500: a fixed base under a
+       rotating head, the 35.29 mm dome (datasheet). The datasheet gives no
+       base/head split, so the head is centred on the window (2 x 7.8 mm);
+       collision and inertia keep the full envelope box. -->
+  <xacro:property name="lidar_head_radius" value="${0.03529 / 2.0}"/>
+  <xacro:property name="lidar_mass" value="0.045"/>
+  <xacro:property name="lidar_window_below_top" value="0.0078"/>
+  <xacro:property name="lidar_scan_above_base"
+                  value="${lidar_height - lidar_window_below_top}"/>
+  <xacro:property name="lidar_head_height"
+                  value="${2.0 * lidar_window_below_top}"/>
+  <xacro:property name="lidar_base_height"
+                  value="${lidar_height - lidar_head_height}"/>
+  <xacro:property name="lidar_adapter_t" value="0.0"/>
+  <xacro:property name="lidar_x" value="0.0"/>
+  <xacro:property name="lidar_y" value="0.0"/>
+  <xacro:property name="lidar_z"
+                  value="${deck_top_z + lidar_adapter_t + lidar_scan_above_base
+                          - base_link_height}"/>
+  <xacro:property name="lidar_roll" value="0.0"/>
+  <xacro:property name="lidar_pitch" value="0.0"/>
+  <xacro:property name="lidar_yaw" value="0.0"/>
+
+  <!-- BNO085 IMU on the electronics deck, axes aligned with base_link. Its
+       mount is not in the CAD yet: base_link origin until it is (calibration
+       knob). 100 Hz is the calibrated-gyro report rate used here.
+       Gyro: 1.7e-3 rad/s white noise is the BNO055's 0.1 deg/s rms (BNO055
+       datasheet rev 1.8, no BNO085 figure exists); 1.5e-4 rad/s static bias
+       is the BNO08x's 0.5 deg/min heading drift spec (datasheet 1000-3927
+       v1.17, sec 6.7), i.e. what its on-chip ZRO calibration leaves.
+       Accel: BNO055 150 ug/sqrt(Hz) over a 50 Hz band, 0.0104 m/s^2. -->
+  <xacro:property name="imu_x" value="0.0"/>
+  <xacro:property name="imu_y" value="0.0"/>
+  <xacro:property name="imu_z" value="0.0"/>
+  <xacro:property name="imu_update_rate" value="100"/>
+  <xacro:property name="imu_gyro_stddev" value="1.7e-3"/>
+  <xacro:property name="imu_gyro_bias_stddev" value="1.5e-4"/>
+  <xacro:property name="imu_accel_stddev" value="0.0104"/>
+
+</robot>

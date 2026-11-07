@@ -1,0 +1,12 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+  <!-- BNO085 IMU: a frame only, REP-103 axes like base_link. -->
+  <xacro:macro name="mobile_base_imu" params="prefix">
+    <link name="${prefix}imu_link"/>
+    <joint name="${prefix}base_link_to_imu_link_joint" type="fixed">
+      <parent link="${prefix}base_link"/>
+      <child link="${prefix}imu_link"/>
+      <origin xyz="${imu_x} ${imu_y} ${imu_z}" rpy="0 0 0"/>
+    </joint>
+  </xacro:macro>
+</robot>

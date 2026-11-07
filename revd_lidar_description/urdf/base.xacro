@@ -1,0 +1,46 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+  <xacro:macro name="mobile_base_assembly" params="prefix">
+    <link name="${prefix}base_footprint"/>
+
+    <joint name="${prefix}base_footprint_to_base_link_joint" type="fixed">
+      <parent link="${prefix}base_footprint"/>
+      <child link="${prefix}base_link"/>
+      <origin xyz="0 0 ${base_link_height}" rpy="0 0 0"/>
+    </joint>
+
+    <!-- Hull, deck, motors and wishbones: one mesh in the ground frame.
+         Collision is the hull bounding box; it overlaps the wheel wells, which
+         costs nothing because the model does not self-collide. -->
+    <link name="${prefix}base_link">
+      <visual>
+        <origin xyz="0 0 ${-base_link_height}" rpy="0 0 0"/>
+        <geometry>
+          <mesh filename="package://revd_lidar_description/meshes/body.stl"/>
+        </geometry>
+        <material name="base_blue"/>
+      </visual>
+      <collision>
+        <origin xyz="0 0 ${hull_bottom_z + hull_height / 2.0 - base_link_height}"
+                rpy="0 0 0"/>
+        <geometry>
+          <box size="${hull_length} ${hull_width} ${hull_height}"/>
+        </geometry>
+      </collision>
+      <xacro:box_inertial mass="${body_mass}"
+                          x="${hull_length}" y="${hull_width}" z="${hull_height}">
+        <origin xyz="0 0 ${body_com_z - base_link_height}" rpy="0 0 0"/>
+      </xacro:box_inertial>
+    </link>
+
+    <!-- Wheel joint names are coupled to ros2_control and controller YAML. -->
+    <xacro:mecanum_wheel prefix="${prefix}" name="front_left" mesh="wheel_fl.stl"
+                         x="${wheelbase / 2.0}" y="${wheel_separation / 2.0}"/>
+    <xacro:mecanum_wheel prefix="${prefix}" name="front_right" mesh="wheel_fr.stl"
+                         x="${wheelbase / 2.0}" y="${-wheel_separation / 2.0}"/>
+    <xacro:mecanum_wheel prefix="${prefix}" name="rear_right" mesh="wheel_rr.stl"
+                         x="${-wheelbase / 2.0}" y="${-wheel_separation / 2.0}"/>
+    <xacro:mecanum_wheel prefix="${prefix}" name="rear_left" mesh="wheel_rl.stl"
+                         x="${-wheelbase / 2.0}" y="${wheel_separation / 2.0}"/>
+  </xacro:macro>
+</robot>
