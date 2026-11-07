@@ -33,5 +33,8 @@ setup(
         'odom_eval = revd_lidar_tools.odom_eval:main',
         'odom_eval_plot = revd_lidar_tools.odom_eval_plot:main',
         'imu_bias = revd_lidar_tools.imu_bias:main',
+        'world_grid = revd_lidar_tools.world_grid:main',
+        'map_score = revd_lidar_tools.map_score:main',
+        'slam_eval = revd_lidar_tools.slam_eval:main',
     ]},
 )

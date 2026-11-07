@@ -1,0 +1,15 @@
+# slam_toolbox async mapping (simulation.launch.py slam:=true). Everything not
+# set here keeps slam_toolbox's built-in default, which matches its shipped
+# mapper_params_online_async.yaml. The range limit comes from /scan's
+# range_max (lidar_sim max_range), so it is not repeated here.
+slam_toolbox:
+  ros__parameters:
+    odom_frame: odom
+    map_frame: map
+    base_frame: base_footprint
+    scan_topic: /scan
+    mode: mapping
+    resolution: 0.05
+    map_update_interval: 5.0
+    # The RViz pose-graph editor; off to save CPU on the Pi.
+    enable_interactive_mode: false
