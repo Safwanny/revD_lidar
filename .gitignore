@@ -1,0 +1,36 @@
+# colcon workspaces
+/build/
+/install/
+/log/
+
+# Python and test caches
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.venv/
+.coverage
+
+# Recordings, datasets, trained models (large, regenerable; reproduce with the scripts in ml/)
+/data/*
+!/data/README.md
+*.db3
+*.mcap
+*.bag
+*.pt
+*.pth
+*.onnx
+*.npz
+/ml/runs/
+
+# Logs and temporary files
+*.log
+*.tmp
+*.swp
+*~
+core
+core.*
+.idea/
+.vscode/
+.DS_Store

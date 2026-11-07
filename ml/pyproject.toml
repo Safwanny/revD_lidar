@@ -1,0 +1,28 @@
+[project]
+name = "revd-lidar-ml"
+version = "0.1.0"
+description = "Small neural-network models trained on Rev D LiDAR data"
+requires-python = ">=3.12"
+dependencies = ["numpy", "torch"]
+
+[dependency-groups]
+dev = ["pytest"]
+
+# This machine has no NVIDIA GPU; the default PyPI torch wheel drags in ~2 GB of CUDA.
+[tool.uv.sources]
+torch = { index = "pytorch-cpu" }
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/revd_lidar_ml"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
