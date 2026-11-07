@@ -115,7 +115,7 @@ ros2 launch revd_lidar_bringup simulation.launch.py world:=house slam:=true
 ```
 
 ```bash
-ros2 run nav2_map_server map_saver_cli -f $HOME/ros2_ws/src/revD_lidar/data/maps/house
+mkdir -p $HOME/ros2_ws/src/revD_lidar/data/maps && ros2 run nav2_map_server map_saver_cli -f $HOME/ros2_ws/src/revD_lidar/data/maps/house
 ```
 
 Scripted run instead of teleop: start the same launch with the world's `spawn` from `revd_lidar_tools/config/slam_routes.yaml`, then `slam_eval` drives the route through the safety chain, writes `truth.tum`, `slam.tum`, `ekf.tum`, saves `map.pgm`/`map.yaml` and exits 0 when the route is done:
