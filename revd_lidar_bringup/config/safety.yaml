@@ -1,0 +1,73 @@
+# Safety chain: every velocity command goes
+#   /cmd_vel_teleop, /cmd_vel_nav, /cmd_vel_policy -> twist_mux -> /cmd_vel_mux
+#   -> safety_governor -> /mobile_base_controller/reference
+# All TwistStamped. The controller's 0.5 s reference_timeout stops the wheels
+# when the chain goes quiet.
+
+# Teleop overrides Nav2, Nav2 overrides a learned policy. /e_stop (std_msgs/Bool, true = locked) blocks every
+# input until false is published. timeout 0.0: a latched lock, no heartbeat;
+# give it one (> 0) once something on the robot publishes it continuously.
+twist_mux:
+  ros__parameters:
+    topics:
+      teleop:
+        topic: /cmd_vel_teleop
+        timeout: 0.5
+        priority: 100
+      navigation:
+        topic: /cmd_vel_nav
+        timeout: 0.5
+        priority: 10
+      policy:
+        topic: /cmd_vel_policy
+        timeout: 0.5
+        priority: 5
+    locks:
+      e_stop:
+        topic: /e_stop
+        timeout: 0.0
+        priority: 255
+
+# revd_lidar_safety safety_governor: slows only motion that closes on a ToF
+# or LiDAR point, so it can stop min_gap short; moving away is never limited.
+# tof_only mode (tof_only: true, or /lidar/ok false, latched) drops the LiDAR
+# and allows only axis moves and clear standing spins.
+safety_governor:
+  ros__parameters:
+    # Hull with wheels: body 296.9 x 168.1 mm, wheel outer faces at
+    # +-(186.5 + 31.5) / 2 mm (properties.xacro), so +-0.15 x +-0.11 m.
+    half_length: 0.15
+    half_width: 0.11
+    # JGY370 150 rpm: 0.47 m/s no-load at the wheel, less under load.
+    # Yaw at the wheel limit: 15.7 rad/s * 0.02996 m / 0.18268 m = 2.57.
+    max_speed: 0.45
+    max_angular: 2.5
+    # Mecanum rollers push at 45 deg, so traction alone allows mu * g / sqrt 2:
+    # 2.1 m/s^2 for printed rollers on a hard floor (mu ~0.3). 1.5 is ~70 %
+    # of that. latency: two 15 Hz ToF frames plus transport. Gives a 0.15 m
+    # stop from 0.45 m/s. Re-measure braking on hardware.
+    brake_decel: 1.5
+    latency: 0.18
+    # Clearance kept along the motion, and across it (so it can still slide
+    # along a wall it stopped min_gap from).
+    min_gap: 0.03
+    side_min_gap: 0.01
+    # Below the braking curve it still creeps until min_gap.
+    creep_speed: 0.03
+    # Anything within side_gap of the hull's sides caps speed at side_factor
+    # of max_speed; it never stops the robot.
+    side_gap: 0.05
+    side_factor: 0.6
+    # Rows 4-6 of each face (tof_rows.yaml). min_height drops floor hits
+    # (row 4 meets the floor at 0.24 m); max_height drops what the robot
+    # passes under.
+    min_height: 0.02
+    max_height: 0.20
+    # Seconds of points kept in odom: the hull corners are outside every
+    # face's 60 deg view up close.
+    memory: 3.0
+    # A face silent past slow_after: motion toward it creeps. Past
+    # stale_after: that motion and turning stop, the rest creeps. A silent
+    # LiDAR is a face toward every direction (normal mode only).
+    slow_after: 0.2
+    stale_after: 0.75

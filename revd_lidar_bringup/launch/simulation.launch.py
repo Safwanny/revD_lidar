@@ -217,6 +217,8 @@ def generate_launch_description():
     controllers = PathJoinSubstitution(
         [bringup_share, 'config', 'controllers.yaml'])
     ekf_config = PathJoinSubstitution([bringup_share, 'config', 'ekf.yaml'])
+    safety_config = PathJoinSubstitution(
+        [bringup_share, 'config', 'safety.yaml'])
     tof_rows_config = PathJoinSubstitution(
         [tools_share, 'config', 'tof_rows.yaml'])
     tof_sim_config = PathJoinSubstitution(
@@ -370,6 +372,25 @@ def generate_launch_description():
             output='screen',
         ),
     ]
+    # Safety chain (config/safety.yaml): drivers publish on /cmd_vel_teleop,
+    # /cmd_vel_nav or /cmd_vel_policy; only safety_governor writes the
+    # controller input.
+    safety_chain = [
+        Node(
+            package='twist_mux',
+            executable='twist_mux',
+            parameters=[safety_config, sim_time],
+            remappings=[('cmd_vel_out', '/cmd_vel_mux')],
+            output='screen',
+        ),
+        Node(
+            package='revd_lidar_safety',
+            executable='safety_governor',
+            name='safety_governor',
+            parameters=[safety_config, sim_time],
+            output='screen',
+        ),
+    ]
     rviz = Node(
         package='rviz2',
         executable='rviz2',
@@ -438,6 +459,7 @@ def generate_launch_description():
         ekf,
         bridge,
         *sensor_models,
+        *safety_chain,
         after(generate_sdf, [spawn_robot], 'simulation SDF generation failed'),
         after(spawn_robot, [joint_state_spawner], 'robot spawn failed'),
         after(joint_state_spawner, [base_controller_spawner, rviz],

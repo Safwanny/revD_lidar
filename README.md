@@ -11,8 +11,9 @@ Status: robot twin in simulation (model, Gazebo, teleop, sensors, EKF odometry).
 | --- | --- |
 | `revd_lidar_description/` | URDF/xacro, meshes imported from the CAD, RViz configs |
 | `revd_lidar_gazebo/` | Gazebo worlds |
-| `revd_lidar_bringup/` | Simulation launch, controller and EKF configuration |
+| `revd_lidar_bringup/` | Simulation launch, controller, EKF and safety-chain (twist_mux) configuration |
 | `revd_lidar_tools/` | Sensor models (`lidar_sim`, `tof_sim`, `tof_rows`, `imu_bias`), `odom_eval`, `stop_simulation` |
+| `revd_lidar_safety/` | C++ safety governor: limits every command by the ToF ring and the LiDAR |
 | `ml/` | Python project (uv) for datasets, training and evaluation of small models |
 | `data/` | Rosbags and datasets, git-ignored (see `data/README.md`) |
 
