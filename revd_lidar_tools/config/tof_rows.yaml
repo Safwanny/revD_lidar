@@ -1,0 +1,14 @@
+# Zone rows kept per ToF face, row 0 = bottom of the 8 x 8 grid. Every sensor
+# is pitched down 11.25 deg (tof_pitch), so a row's elevation is
+# -37.5 + 7.5 * row deg. At the 32 mm mount height:
+#   row 6 ->  +7.5 deg, rising: tall obstacles, overhangs
+#   row 5 ->   0.0 deg, level: never meets the floor, longest range
+#   row 4 ->  -7.5 deg, floor at 0.24 m: low obstacles
+# Shared by tof_rows and tof_ray_markers.
+/**:
+  ros__parameters:
+    rows:
+      front: [4, 5, 6]
+      rear: [4, 5, 6]
+      left: [4, 5, 6]
+      right: [4, 5, 6]

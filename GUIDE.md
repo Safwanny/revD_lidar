@@ -33,3 +33,73 @@ View the model in RViz (wheel sliders on; `use_joint_state_gui:=false` holds the
 ```bash
 ros2 launch revd_lidar_description display.launch.py
 ```
+
+## Simulation (`revd_lidar_bringup`)
+
+Build the four packages:
+
+```bash
+cd ~/ros2_ws && colcon build --symlink-install --packages-select revd_lidar_description revd_lidar_gazebo revd_lidar_tools revd_lidar_bringup --cmake-args -DPython3_EXECUTABLE=/usr/bin/python3
+```
+
+Start Gazebo and RViz (worlds: `navigation_basic` (default), `my_world`, `failsafe_course`; `gui:=false` runs Gazebo headless, `seed:=<n>` changes the noise draw):
+
+```bash
+source ~/ros2_ws/install/setup.bash && ros2 launch revd_lidar_bringup simulation.launch.py world:=my_world
+```
+
+Drive it from a second terminal (`i` forward, `,` back, `j`/`l` turn; hold Shift for strafing: `J`/`L` sideways, `U`/`O`/`M`/`>` diagonals; `k` stops):
+
+```bash
+source ~/ros2_ws/install/setup.bash && ros2 run teleop_twist_keyboard teleop_twist_keyboard --ros-args -p stamped:=true -p frame_id:=base_link -r cmd_vel:=/mobile_base_controller/reference
+```
+
+Teleop goes straight to the controller until the safety chain exists. The controller stops the robot 0.5 s after the last command.
+
+Check the sensors (`/scan` 500 beams at 10 Hz in `laser_link`, `/tof/<face>/points`, `/tof/<face>/rows`, `/imu/data`, `/odometry/filtered`):
+
+```bash
+ros2 topic hz /scan
+```
+
+Stop everything, including Gazebo servers that outlive Ctrl+C (it matches every ROS 2 and Gazebo process on the machine, revD_ardu's included):
+
+```bash
+ros2 run revd_lidar_tools stop_simulation
+```
+
+## Odometry evaluation (`odom_eval`)
+
+Start the simulation with room for a 2 m square, headless:
+
+```bash
+ros2 launch revd_lidar_bringup simulation.launch.py gui:=false rviz:=false x:=-4.0 y:=-3.2
+```
+
+Run the evaluation in a second terminal. It drives a 60 s standstill, the square, the strafed square and a calibration turn (about 7 min sim time), writes TUM files and `report.txt`, and exits 0 only on PASS:
+
+```bash
+ros2 run revd_lidar_tools odom_eval --ros-args -p use_sim_time:=true -p output_dir:=$HOME/ros2_ws/src/revD_lidar/data/odom_eval
+```
+
+Rotation calibration: the report's `turn: wheel / true` line is the factor for `kinematics.sum_of_robot_center_projection_on_X_Y_axis` in `revd_lidar_bringup/config/controllers.yaml`. Multiply, rebuild, rerun until it reads 1.000 ± 0.005, and record the value and run there.
+
+Plot a run:
+
+```bash
+ros2 run revd_lidar_tools odom_eval_plot $HOME/ros2_ws/src/revD_lidar/data/odom_eval
+```
+
+## Tests
+
+Unit tests (no simulator):
+
+```bash
+colcon test --executor sequential --packages-select revd_lidar_description revd_lidar_gazebo revd_lidar_tools && colcon test-result --verbose
+```
+
+Bringup: the wheel-contact check and the `test_sensor_topics` launch test (starts Gazebo headless, about 3 min, needs the GPU for ogre2):
+
+```bash
+colcon test --executor sequential --packages-select revd_lidar_bringup && colcon test-result --test-result-base build/revd_lidar_bringup --verbose
+```

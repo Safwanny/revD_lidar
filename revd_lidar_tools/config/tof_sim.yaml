@@ -1,0 +1,17 @@
+# VL53L7CX at 8 x 8 / 15 Hz continuous, dark, for tof_sim. Sources are
+# ST's VL53L7CX datasheet DS13865 Rev 6; its accuracy figures are 2.7 sigma.
+#   max_range       2.0 m: white 88 % target, typical (Table 18). Must equal
+#                   tof_max_range in revd_lidar_description properties.xacro.
+#   sigma_near      4.5 mm: +-11 to 12 mm from 20 to 200 mm (Table 19) / 2.7.
+#   sigma_relative  2.1 %: +-5 to 6 % from 200 to 4000 mm (Table 19) / 2.7.
+#   dropout_far     0.10: Table 18 ranges are at a 90 % detection rate.
+#   dropout_near    0.01: not specified; a close target fills the zone.
+# Gazebo adds no noise of its own to the ToF ring, so these are the whole
+# sensor model.
+/**:
+  ros__parameters:
+    max_range: 2.0
+    sigma_near: 0.0045
+    sigma_relative: 0.021
+    dropout_near: 0.01
+    dropout_far: 0.10

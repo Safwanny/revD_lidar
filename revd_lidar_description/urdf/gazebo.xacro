@@ -1,0 +1,20 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+  <xacro:macro name="revd_lidar_gazebo" params="controllers_file">
+    <gazebo>
+      <plugin filename="gz_ros2_control-system"
+              name="gz_ros2_control::GazeboSimROS2ControlPlugin">
+        <parameters>${controllers_file}</parameters>
+      </plugin>
+      <!-- Gazebo's true pose, for evaluation only: bridged to
+           /ground_truth/odom, its tf_topic never bridged into /tf. -->
+      <plugin filename="gz-sim-odometry-publisher-system"
+              name="gz::sim::systems::OdometryPublisher">
+        <odom_frame>ground_truth</odom_frame>
+        <robot_base_frame>base_footprint</robot_base_frame>
+        <odom_topic>/ground_truth/odom</odom_topic>
+        <odom_publish_frequency>50</odom_publish_frequency>
+      </plugin>
+    </gazebo>
+  </xacro:macro>
+</robot>
