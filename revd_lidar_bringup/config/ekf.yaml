@@ -1,0 +1,31 @@
+# robot_localization EKF: the only publisher of odom -> base_footprint.
+# Wheels give vx, vy; the gyro gives vyaw, after imu_bias has removed the
+# bias it learns at standstill. Wheel yaw is left out because mecanum turns
+# slip (it read turns 4.5 % long in sim before calibration), and IMU
+# orientation is left out because in sim it would be Gazebo truth.
+ekf_filter_node:
+  ros__parameters:
+    frequency: 50.0
+    sensor_timeout: 0.1
+    two_d_mode: true
+    publish_tf: true
+
+    map_frame: map
+    odom_frame: odom
+    base_link_frame: base_footprint
+    world_frame: odom
+
+    # (X, Y, Z, roll, pitch, yaw, vX, vY, vZ, vroll, vpitch, vyaw, aX, aY, aZ)
+    odom0: /mobile_base_controller/odometry
+    odom0_config: [false, false, false,
+                   false, false, false,
+                   true,  true,  false,
+                   false, false, false,
+                   false, false, false]
+
+    imu0: /imu/data_unbiased
+    imu0_config: [false, false, false,
+                  false, false, false,
+                  false, false, false,
+                  false, false, true,
+                  false, false, false]

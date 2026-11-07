@@ -1,0 +1,15 @@
+# LDRobot D500 (STL-19P) at 10 Hz, for lidar_sim. Source: STL-19P datasheet
+# v1.0 (2023-09-28), accuracy table, "STD" column:
+#   sigmas     2 mm at 0.03-0.5 m, 4 mm at 0.5-2 m, 15 mm beyond 2 m.
+#   bands      the band edges, 0.5 and 2.0 m.
+#   max_range  12 m on a white (80 %) target; set 8.0 for black (4 %). The
+#              worlds carry no reflectivity, so one value covers the run.
+# Gazebo adds no noise of its own to the LiDAR, so this is the whole range
+# model. Not modelled: the datasheet's +-10/20/30 mm accuracy band as a
+# mean bias, beam pitch (set lidar_pitch in properties.xacro), the driver's
+# late stamp and motion skew.
+/**:
+  ros__parameters:
+    bands: [0.5, 2.0]
+    sigmas: [0.002, 0.004, 0.015]
+    max_range: 12.0

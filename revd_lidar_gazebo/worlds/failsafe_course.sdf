@@ -1,0 +1,95 @@
+<?xml version="1.0"?>
+<sdf version="1.9">
+  <world name="failsafe_course">
+    <physics name="1ms" type="ignored">
+      <max_step_size>0.001</max_step_size>
+      <real_time_factor>1.0</real_time_factor>
+    </physics>
+    <plugin filename="gz-sim-physics-system" name="gz::sim::systems::Physics"/>
+    <plugin filename="gz-sim-user-commands-system" name="gz::sim::systems::UserCommands"/>
+    <plugin filename="gz-sim-scene-broadcaster-system" name="gz::sim::systems::SceneBroadcaster"/>
+    <plugin filename="gz-sim-imu-system" name="gz::sim::systems::Imu"/>
+    <plugin filename="gz-sim-sensors-system" name="gz::sim::systems::Sensors">
+      <render_engine>ogre2</render_engine>
+    </plugin>
+    <light type="directional" name="sun">
+      <pose>0 0 10 0 0 0</pose><cast_shadows>true</cast_shadows>
+      <diffuse>0.85 0.85 0.85 1</diffuse><specular>0.2 0.2 0.2 1</specular>
+      <direction>-0.5 0.1 -0.9</direction>
+    </light>
+    <model name="ground_plane">
+      <static>true</static>
+      <link name="link">
+        <collision name="collision"><geometry><plane><normal>0 0 1</normal><size>20 20</size></plane></geometry></collision>
+        <visual name="visual">
+          <geometry><plane><normal>0 0 1</normal><size>20 20</size></plane></geometry>
+          <material><ambient>0.60 0.60 0.60 1</ambient><diffuse>0.60 0.60 0.60 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- A 10 x 8 m room for the ToF-only bug navigator: a long wall off the
+         south wall, a U-trap open to the west and a closed box. Boxes only,
+         axis-aligned: test_bug_nav.py reads them back as obstacles. -->
+    <model name="north_wall">
+      <static>true</static><pose>0 4 0.25 0 0 0</pose>
+      <link name="link"><collision name="collision"><geometry><box><size>10 0.15 0.5</size></box></geometry></collision>
+        <visual name="visual"><geometry><box><size>10 0.15 0.5</size></box></geometry></visual></link>
+    </model>
+    <model name="south_wall">
+      <static>true</static><pose>0 -4 0.25 0 0 0</pose>
+      <link name="link"><collision name="collision"><geometry><box><size>10 0.15 0.5</size></box></geometry></collision>
+        <visual name="visual"><geometry><box><size>10 0.15 0.5</size></box></geometry></visual></link>
+    </model>
+    <model name="east_wall">
+      <static>true</static><pose>5 0 0.25 0 0 0</pose>
+      <link name="link"><collision name="collision"><geometry><box><size>0.15 8 0.5</size></box></geometry></collision>
+        <visual name="visual"><geometry><box><size>0.15 8 0.5</size></box></geometry></visual></link>
+    </model>
+    <model name="west_wall">
+      <static>true</static><pose>-5 0 0.25 0 0 0</pose>
+      <link name="link"><collision name="collision"><geometry><box><size>0.15 8 0.5</size></box></geometry></collision>
+        <visual name="visual"><geometry><box><size>0.15 8 0.5</size></box></geometry></visual></link>
+    </model>
+    <model name="long_wall">
+      <static>true</static><pose>-2 -1.4625 0.25 0 0 0</pose>
+      <link name="link"><collision name="collision"><geometry><box><size>0.15 4.925 0.5</size></box></geometry></collision>
+        <visual name="visual"><geometry><box><size>0.15 4.925 0.5</size></box></geometry></visual></link>
+    </model>
+    <model name="u_back">
+      <static>true</static><pose>3.0 0 0.25 0 0 0</pose>
+      <link name="link"><collision name="collision"><geometry><box><size>0.15 2.55 0.5</size></box></geometry></collision>
+        <visual name="visual"><geometry><box><size>0.15 2.55 0.5</size></box></geometry></visual></link>
+    </model>
+    <model name="u_north">
+      <static>true</static><pose>2.25 1.2 0.25 0 0 0</pose>
+      <link name="link"><collision name="collision"><geometry><box><size>1.5 0.15 0.5</size></box></geometry></collision>
+        <visual name="visual"><geometry><box><size>1.5 0.15 0.5</size></box></geometry></visual></link>
+    </model>
+    <model name="u_south">
+      <static>true</static><pose>2.25 -1.2 0.25 0 0 0</pose>
+      <link name="link"><collision name="collision"><geometry><box><size>1.5 0.15 0.5</size></box></geometry></collision>
+        <visual name="visual"><geometry><box><size>1.5 0.15 0.5</size></box></geometry></visual></link>
+    </model>
+    <model name="box_north">
+      <static>true</static><pose>3.0 3.15 0.25 0 0 0</pose>
+      <link name="link"><collision name="collision"><geometry><box><size>1.2 0.1 0.5</size></box></geometry></collision>
+        <visual name="visual"><geometry><box><size>1.2 0.1 0.5</size></box></geometry></visual></link>
+    </model>
+    <model name="box_south">
+      <static>true</static><pose>3.0 2.05 0.25 0 0 0</pose>
+      <link name="link"><collision name="collision"><geometry><box><size>1.2 0.1 0.5</size></box></geometry></collision>
+        <visual name="visual"><geometry><box><size>1.2 0.1 0.5</size></box></geometry></visual></link>
+    </model>
+    <model name="box_west">
+      <static>true</static><pose>2.45 2.6 0.25 0 0 0</pose>
+      <link name="link"><collision name="collision"><geometry><box><size>0.1 1.2 0.5</size></box></geometry></collision>
+        <visual name="visual"><geometry><box><size>0.1 1.2 0.5</size></box></geometry></visual></link>
+    </model>
+    <model name="box_east">
+      <static>true</static><pose>3.55 2.6 0.25 0 0 0</pose>
+      <link name="link"><collision name="collision"><geometry><box><size>0.1 1.2 0.5</size></box></geometry></collision>
+        <visual name="visual"><geometry><box><size>0.1 1.2 0.5</size></box></geometry></visual></link>
+    </model>
+  </world>
+</sdf>

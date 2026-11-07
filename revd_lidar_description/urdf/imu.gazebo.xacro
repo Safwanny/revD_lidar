@@ -1,0 +1,38 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+  <!-- The IMU on /imu/data. gz-sensors fills orientation from the true pose
+       with no noise, so it is switched off: only the noisy rates and
+       accelerations leave the sensor. -->
+  <xacro:macro name="imu_noise" params="stddev bias_stddev">
+    <noise type="gaussian">
+      <mean>0.0</mean>
+      <stddev>${stddev}</stddev>
+      <bias_mean>0.0</bias_mean>
+      <bias_stddev>${bias_stddev}</bias_stddev>
+    </noise>
+  </xacro:macro>
+
+  <xacro:macro name="mobile_base_imu_gazebo" params="prefix">
+    <gazebo reference="${prefix}imu_link">
+      <sensor name="${prefix}imu" type="imu">
+        <always_on>true</always_on>
+        <update_rate>${imu_update_rate}</update_rate>
+        <topic>/imu/data</topic>
+        <gz_frame_id>${prefix}imu_link</gz_frame_id>
+        <imu>
+          <enable_orientation>false</enable_orientation>
+          <angular_velocity>
+            <x><xacro:imu_noise stddev="${imu_gyro_stddev}" bias_stddev="${imu_gyro_bias_stddev}"/></x>
+            <y><xacro:imu_noise stddev="${imu_gyro_stddev}" bias_stddev="${imu_gyro_bias_stddev}"/></y>
+            <z><xacro:imu_noise stddev="${imu_gyro_stddev}" bias_stddev="${imu_gyro_bias_stddev}"/></z>
+          </angular_velocity>
+          <linear_acceleration>
+            <x><xacro:imu_noise stddev="${imu_accel_stddev}" bias_stddev="0.0"/></x>
+            <y><xacro:imu_noise stddev="${imu_accel_stddev}" bias_stddev="0.0"/></y>
+            <z><xacro:imu_noise stddev="${imu_accel_stddev}" bias_stddev="0.0"/></z>
+          </linear_acceleration>
+        </imu>
+      </sensor>
+    </gazebo>
+  </xacro:macro>
+</robot>

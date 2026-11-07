@@ -1,0 +1,39 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+  <!-- The D500 as a one-row gpu_lidar on /scan_raw. Exact ranges: lidar_sim
+       adds the datasheet noise and range limit on the way to /scan.
+       The near clip is the datasheet's 0.03 m, past the 17.6 mm head
+       radius, so the sensor cannot see its own body. -->
+  <xacro:macro name="mobile_base_lidar_gazebo" params="prefix">
+    <gazebo reference="${prefix}laser_link">
+      <sensor name="${prefix}lidar" type="gpu_lidar">
+        <always_on>true</always_on>
+        <update_rate>${lidar_update_rate}</update_rate>
+        <visualize>false</visualize>
+        <topic>/scan_raw</topic>
+        <gz_frame_id>${prefix}laser_link</gz_frame_id>
+        <lidar>
+          <scan>
+            <horizontal>
+              <samples>${lidar_samples}</samples>
+              <resolution>1</resolution>
+              <min_angle>${-pi}</min_angle>
+              <max_angle>${pi - 2.0 * pi / lidar_samples}</max_angle>
+            </horizontal>
+            <vertical>
+              <samples>1</samples>
+              <resolution>1</resolution>
+              <min_angle>0</min_angle>
+              <max_angle>0</max_angle>
+            </vertical>
+          </scan>
+          <range>
+            <min>${lidar_min_range}</min>
+            <max>${lidar_max_range}</max>
+            <resolution>${lidar_range_resolution}</resolution>
+          </range>
+        </lidar>
+      </sensor>
+    </gazebo>
+  </xacro:macro>
+</robot>
