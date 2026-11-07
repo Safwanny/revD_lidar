@@ -1,0 +1,46 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+  <!-- LDRobot D500. The link origin is the rotation centre on the scan
+       plane: the frame /scan is stamped in, +X along the "forward" mark.
+       Visuals: the fixed base below the head, and the rotating head centred
+       on the scan plane. Collision is the datasheet envelope. -->
+  <xacro:macro name="mobile_base_lidar" params="prefix">
+    <link name="${prefix}laser_link">
+      <visual>
+        <origin xyz="0 0 ${lidar_base_height / 2.0 - lidar_scan_above_base}"
+                rpy="0 0 0"/>
+        <geometry>
+          <box size="${lidar_length} ${lidar_width} ${lidar_base_height}"/>
+        </geometry>
+        <material name="lidar_black"/>
+      </visual>
+      <visual>
+        <geometry>
+          <cylinder radius="${lidar_head_radius}"
+                    length="${lidar_head_height}"/>
+        </geometry>
+        <material name="sensor_grey"/>
+      </visual>
+      <collision>
+        <origin xyz="0 0 ${lidar_height / 2.0 - lidar_scan_above_base}"
+                rpy="0 0 0"/>
+        <geometry>
+          <box size="${lidar_length} ${lidar_width} ${lidar_height}"/>
+        </geometry>
+      </collision>
+      <xacro:box_inertial mass="${lidar_mass}"
+                          x="${lidar_length}" y="${lidar_width}"
+                          z="${lidar_height}">
+        <origin xyz="0 0 ${lidar_height / 2.0 - lidar_scan_above_base}"
+                rpy="0 0 0"/>
+      </xacro:box_inertial>
+    </link>
+
+    <joint name="${prefix}base_link_to_laser_link_joint" type="fixed">
+      <parent link="${prefix}base_link"/>
+      <child link="${prefix}laser_link"/>
+      <origin xyz="${lidar_x} ${lidar_y} ${lidar_z}"
+              rpy="${lidar_roll} ${lidar_pitch} ${lidar_yaw}"/>
+    </joint>
+  </xacro:macro>
+</robot>
