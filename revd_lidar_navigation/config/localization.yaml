@@ -1,0 +1,52 @@
+# Localization on a saved map (localization.launch.py map:=<path without
+# extension>). localization:=amcl: map_server serves <map>.yaml, AMCL owns
+# map -> odom. localization:=slam_toolbox: slam_toolbox in localization mode
+# on <map>.posegraph (slam.yaml plus the slam_toolbox block below). Unset AMCL
+# parameters keep Nav2's defaults (the same values as nav2_bringup's
+# nav2_params.yaml). The initial pose and the map file are set by the launch.
+map_server:
+  ros__parameters:
+    topic_name: map
+    frame_id: map
+
+amcl:
+  ros__parameters:
+    # Mecanum base: the holonomic model, which also samples sideways motion.
+    robot_model_type: nav2_amcl::OmniMotionModel
+    base_frame_id: base_footprint
+    odom_frame_id: odom
+    global_frame_id: map
+    scan_topic: /scan
+    # /scan's range_max (lidar_sim max_range, 12 m); -1 = take it from the scan.
+    laser_max_range: -1.0
+    laser_min_range: -1.0
+    # Tuned from Nav2's defaults (sigma_hit 0.2, z_hit/z_rand 0.5/0.5,
+    # 60 beams, updates every 0.25 m / 0.2 rad), which wandered ~0.1 m RMSE
+    # in navigation_basic (T9 results): the D500's range noise is 2-15 mm,
+    # so a tight hit model, few random hits, more beams and frequent updates.
+    laser_model_type: likelihood_field
+    sigma_hit: 0.05
+    z_hit: 0.9
+    z_rand: 0.1
+    max_beams: 120
+    min_particles: 500
+    max_particles: 2000
+    update_min_d: 0.05
+    update_min_a: 0.05
+    transform_tolerance: 1.0
+    tf_broadcast: true
+    set_initial_pose: true
+
+slam_toolbox:
+  ros__parameters:
+    mode: localization
+    # Match every 0.1 m / 0.1 rad instead of 0.5 m / 0.5 rad, as often as
+    # AMCL updates (T9 results).
+    minimum_travel_distance: 0.1
+    minimum_travel_heading: 0.1
+
+# node_names (map_server + amcl, or slam_toolbox) and, for slam_toolbox,
+# which has no bond in 2.8.5, bond_timeout 0 are set by the launch.
+lifecycle_manager_localization:
+  ros__parameters:
+    autostart: true

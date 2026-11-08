@@ -391,22 +391,11 @@ def generate_launch_description():
             output='screen',
         ),
     ]
-    # slam_toolbox's own launch: a lifecycle node it configures and activates.
-    slam = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource(PathJoinSubstitution(
-            [FindPackageShare('slam_toolbox'), 'launch',
-             'online_async_launch.py'])),
-        launch_arguments={
-            'slam_params_file': PathJoinSubstitution(
-                [FindPackageShare('revd_lidar_bringup'), 'config',
-                 'slam.yaml']),
-            'use_sim_time': LaunchConfiguration('use_sim_time'),
-        }.items(),
-        condition=IfCondition(LaunchConfiguration('slam')))
     rviz = Node(
         package='rviz2',
         executable='rviz2',
-        arguments=['-d', rviz_config],
+        arguments=['-d', rviz_config,
+                   '-f', LaunchConfiguration('fixed_frame')],
         parameters=[sim_time],
         condition=IfCondition(LaunchConfiguration('rviz')),
         output='screen',
@@ -454,8 +443,10 @@ def generate_launch_description():
             description=('Remove the gyro bias learnt at standstill; false '
                          'passes /imu/data through unchanged.')),
         DeclareLaunchArgument(
-            'slam', default_value='false',
-            description='Build a map with slam_toolbox (async mapping).'),
+            'fixed_frame', default_value='odom',
+            description=('RViz fixed frame; map when revd_lidar_navigation '
+                         'runs, so clicked goals and pose estimates land in '
+                         'map.')),
         DeclareLaunchArgument('x', default_value='0.0'),
         DeclareLaunchArgument('y', default_value='0.0'),
         DeclareLaunchArgument('z', default_value='0.10'),
@@ -475,7 +466,6 @@ def generate_launch_description():
         bridge,
         *sensor_models,
         *safety_chain,
-        slam,
         after(generate_sdf, [spawn_robot], 'simulation SDF generation failed'),
         after(spawn_robot, [joint_state_spawner], 'robot spawn failed'),
         after(joint_state_spawner, [base_controller_spawner, rviz],

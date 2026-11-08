@@ -1,0 +1,39 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>revd_lidar_navigation</name>
+  <version>0.1.0</version>
+  <description>Mapping, localization and Nav2 configuration and launches for revD_lidar, run beside the simulation or the robot.</description>
+  <maintainer email="safwan.shaikh@gmail.com">Safwan</maintainer>
+  <license>Apache-2.0</license>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+
+  <exec_depend>launch</exec_depend>
+  <exec_depend>launch_ros</exec_depend>
+  <exec_depend>nav2_amcl</exec_depend>
+  <exec_depend>nav2_behaviors</exec_depend>
+  <exec_depend>nav2_bt_navigator</exec_depend>
+  <exec_depend>nav2_controller</exec_depend>
+  <exec_depend>nav2_lifecycle_manager</exec_depend>
+  <exec_depend>nav2_map_server</exec_depend>
+  <exec_depend>nav2_mppi_controller</exec_depend>
+  <exec_depend>nav2_planner</exec_depend>
+  <exec_depend>nav2_smac_planner</exec_depend>
+  <exec_depend>slam_toolbox</exec_depend>
+
+  <test_depend>ament_lint_auto</test_depend>
+  <test_depend>ament_lint_common</test_depend>
+  <test_depend>launch_testing</test_depend>
+  <test_depend>launch_testing_ament_cmake</test_depend>
+  <test_depend>action_msgs</test_depend>
+  <test_depend>geometry_msgs</test_depend>
+  <test_depend>nav2_msgs</test_depend>
+  <test_depend>nav_msgs</test_depend>
+  <test_depend>rclpy</test_depend>
+  <test_depend>revd_lidar_bringup</test_depend>
+  <test_depend>revd_lidar_gazebo</test_depend>
+  <test_depend>revd_lidar_tools</test_depend>
+  <test_depend>tf2_ros_py</test_depend>
+
+  <export><build_type>ament_cmake</build_type></export>
+</package>
