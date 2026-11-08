@@ -2,7 +2,7 @@
 <package format="3">
   <name>revd_lidar_bringup</name>
   <version>0.1.0</version>
-  <description>Controller and EKF configuration and the simulation launch for revD_lidar.</description>
+  <description>Controller, EKF and safety-chain configuration and the simulation launch for revD_lidar.</description>
   <maintainer email="safwan.shaikh@gmail.com">Safwan</maintainer>
   <license>Apache-2.0</license>
 
@@ -26,7 +26,6 @@
   <exec_depend>ros_gz_bridge</exec_depend>
   <exec_depend>ros_gz_sim</exec_depend>
   <exec_depend>rviz2</exec_depend>
-  <exec_depend>slam_toolbox</exec_depend>
   <exec_depend>teleop_twist_keyboard</exec_depend>
   <exec_depend>twist_mux</exec_depend>
   <exec_depend>xacro</exec_depend>

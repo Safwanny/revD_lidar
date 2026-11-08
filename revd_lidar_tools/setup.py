@@ -36,5 +36,7 @@ setup(
         'world_grid = revd_lidar_tools.world_grid:main',
         'map_score = revd_lidar_tools.map_score:main',
         'slam_eval = revd_lidar_tools.slam_eval:main',
+        'loc_score = revd_lidar_tools.loc_score:main',
+        'nav_eval = revd_lidar_tools.nav_eval:main',
     ]},
 )

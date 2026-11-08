@@ -10,10 +10,30 @@ Visualization Manager:
       Name: Grid
       Value: true
     - Class: rviz_default_plugins/Map
-      Name: Map (slam:=true)
+      Name: Map
       Topic:
         Durability Policy: Transient Local
         Value: /map
+      Value: true
+    - Alpha: 0.4
+      Class: rviz_default_plugins/Map
+      Color Scheme: costmap
+      Name: Global costmap (nav:=true)
+      Topic:
+        Value: /global_costmap/costmap
+      Value: true
+    - Alpha: 0.6
+      Class: rviz_default_plugins/Map
+      Color Scheme: costmap
+      Name: Local costmap (nav:=true)
+      Topic:
+        Value: /local_costmap/costmap
+      Value: true
+    - Class: rviz_default_plugins/Path
+      Color: 60; 200; 255
+      Name: Plan (nav:=true)
+      Topic:
+        Value: /plan
       Value: true
     - Class: rviz_default_plugins/RobotModel
       Description Source: Topic
@@ -164,6 +184,12 @@ Visualization Manager:
     - Class: rviz_default_plugins/MoveCamera
     - Class: rviz_default_plugins/Select
     - Class: rviz_default_plugins/FocusCamera
+    - Class: rviz_default_plugins/SetInitialPose
+      Topic:
+        Value: /initialpose
+    - Class: rviz_default_plugins/SetGoal
+      Topic:
+        Value: /goal_pose
   Value: true
   Views:
     Current:

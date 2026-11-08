@@ -1,4 +1,5 @@
-# slam_toolbox async mapping (simulation.launch.py slam:=true). Everything not
+# slam_toolbox async mapping (slam.launch.py); localization.launch.py also loads
+# it for slam_toolbox localization, with localization.yaml on top. Everything not
 # set here keeps slam_toolbox's built-in default, which matches its shipped
 # mapper_params_online_async.yaml. The range limit comes from /scan's
 # range_max (lidar_sim max_range), so it is not repeated here.
@@ -13,3 +14,10 @@ slam_toolbox:
     map_update_interval: 5.0
     # The RViz pose-graph editor; off to save CPU on the Pi.
     enable_interactive_mode: false
+
+lifecycle_manager_slam:
+  ros__parameters:
+    autostart: true
+    node_names: ["slam_toolbox"]
+    # slam_toolbox 2.8.5 has no bond, so the manager must not wait for one.
+    bond_timeout: 0.0

@@ -6,7 +6,7 @@ Slices every static box and cylinder collision at the height of laser_link
 a Nav2 map (<out>.pgm + <out>.yaml) in the world frame: what a perfect 2D
 LiDAR map of the world would hold. map_score compares SLAM maps against it.
 
-    world_grid <world.sdf> <out>
+    world_grid <world.sdf> <out> [--resolution 0.05]
 """
 
 import argparse
@@ -89,7 +89,7 @@ def shapes(sdf_path, height):
     return out
 
 
-def render(cut):
+def render(cut, resolution=RESOLUTION):
     """Occupancy (True = occupied, row 0 = lowest y) and the grid origin."""
     xs, ys = [], []
     for shape in cut:
@@ -102,15 +102,15 @@ def render(cut):
         xs += [shape[1] - rx, shape[1] + rx]
         ys += [shape[2] - ry, shape[2] + ry]
     x0, y0 = min(xs) - MARGIN, min(ys) - MARGIN
-    width = math.ceil((max(xs) + MARGIN - x0) / RESOLUTION)
-    height = math.ceil((max(ys) + MARGIN - y0) / RESOLUTION)
-    cx = x0 + (np.arange(width) + 0.5) * RESOLUTION
-    cy = y0 + (np.arange(height) + 0.5) * RESOLUTION
+    width = math.ceil((max(xs) + MARGIN - x0) / resolution)
+    height = math.ceil((max(ys) + MARGIN - y0) / resolution)
+    cx = x0 + (np.arange(width) + 0.5) * resolution
+    cy = y0 + (np.arange(height) + 0.5) * resolution
     px, py = np.meshgrid(cx, cy)
     grid = np.zeros((height, width), dtype=bool)
     # A cell is occupied if the shape covers its centre, grown by half a cell
     # so 0.1 m walls and 24 mm legs never fall between centres.
-    half = RESOLUTION / 2
+    half = resolution / 2
     for shape in cut:
         if shape[0] == 'box':
             _, x, y, yaw, sx, sy = shape
@@ -124,7 +124,7 @@ def render(cut):
     return grid, (x0, y0)
 
 
-def save_map(grid, origin, out):
+def save_map(grid, origin, out, resolution=RESOLUTION):
     """Nav2 map_server files: <out>.pgm (row 0 = top) and <out>.yaml."""
     out = Path(out)
     image = np.where(grid, OCCUPIED, FREE).astype(np.uint8)[::-1]
@@ -132,7 +132,7 @@ def save_map(grid, origin, out):
     out.with_suffix('.pgm').write_bytes(header + image.tobytes())
     out.with_suffix('.yaml').write_text(
         f'image: {out.with_suffix(".pgm").name}\n'
-        f'mode: trinary\nresolution: {RESOLUTION}\n'
+        f'mode: trinary\nresolution: {resolution}\n'
         f'origin: [{origin[0]:.4f}, {origin[1]:.4f}, 0.0]\n'
         'negate: 0\noccupied_thresh: 0.65\nfree_thresh: 0.25\n',
         encoding='utf-8')
@@ -142,12 +142,14 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument('world', help='world SDF')
     parser.add_argument('out', help='output path without extension')
+    parser.add_argument('--resolution', type=float, default=RESOLUTION,
+                        help='cell size in m (nav_eval scores gaps at 0.01)')
     args = parser.parse_args()
     height = robot_scan_height()
-    grid, origin = render(shapes(args.world, height))
-    save_map(grid, origin, args.out)
+    grid, origin = render(shapes(args.world, height), args.resolution)
+    save_map(grid, origin, args.out, args.resolution)
     print(f'{args.out}: {grid.shape[1]} x {grid.shape[0]} cells at '
-          f'{RESOLUTION} m, sliced at z = {height:.4f} m')
+          f'{args.resolution} m, sliced at z = {height:.4f} m')
 
 
 if __name__ == '__main__':

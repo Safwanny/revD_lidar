@@ -36,10 +36,10 @@ ros2 launch revd_lidar_description display.launch.py
 
 ## Simulation (`revd_lidar_bringup`)
 
-Build the five packages:
+Build the six packages:
 
 ```bash
-cd ~/ros2_ws && colcon build --symlink-install --packages-select revd_lidar_description revd_lidar_gazebo revd_lidar_tools revd_lidar_safety revd_lidar_bringup --cmake-args -DPython3_EXECUTABLE=/usr/bin/python3
+cd ~/ros2_ws && colcon build --symlink-install --packages-select revd_lidar_description revd_lidar_gazebo revd_lidar_tools revd_lidar_safety revd_lidar_bringup revd_lidar_navigation --cmake-args -DPython3_EXECUTABLE=/usr/bin/python3
 ```
 
 Start Gazebo and RViz (worlds: `navigation_basic` (default), `my_world`, `failsafe_course`, `house`; `gui:=false` runs Gazebo headless, `seed:=<n>` changes the noise draw):
@@ -106,42 +106,96 @@ Plot a run:
 ros2 run revd_lidar_tools odom_eval_plot $HOME/ros2_ws/src/revD_lidar/data/odom_eval
 ```
 
-## Mapping (slam_toolbox)
+## Navigation stack (`revd_lidar_navigation`)
 
-Worlds: `house` (20 × 15 m, rebuilt by `revd_lidar_gazebo/scripts/generate_house.py`; `test_worlds.py` fails if the SDF is stale) and the three above. Map by hand: start with `slam:=true`, drive with teleop, then save:
+Mapping, localization and Nav2 run as their own launches beside the simulation, the same way they will run beside the robot's launch on hardware. Each takes `use_sim_time` (default `true`; `false` on the robot). Start the simulation with `fixed_frame:=map` so RViz shows them in the map frame and clicked goals land there.
+
+| Launch | Runs | Config |
+| --- | --- | --- |
+| `slam.launch.py` | slam_toolbox async mapping | `config/slam.yaml` |
+| `localization.launch.py` | AMCL + map_server (`localization:=amcl`, default) or slam_toolbox localization (`localization:=slam_toolbox`) | `config/localization.yaml` (+ `slam.yaml`) |
+| `nav2.launch.py` | Nav2: Smac 2D planner, MPPI Omni, replanning at 1 Hz, only costmap clearing and Wait as recoveries; output on `/cmd_vel_nav`, so teleop overrides it and the governor limits it | `config/nav2.yaml`, `config/navigate.xml` |
+
+Each is held up by a Nav2 lifecycle manager; slam_toolbox 2.8.5 has no bond, so its managers run with `bond_timeout: 0`.
+
+### Mapping
+
+Worlds: `house` (20 × 15 m, rebuilt by `revd_lidar_gazebo/scripts/generate_house.py`; `test_worlds.py` fails if the SDF is stale) and the three above. Map by hand: start the simulation and slam_toolbox, drive with teleop, then save:
 
 ```bash
-ros2 launch revd_lidar_bringup simulation.launch.py world:=house slam:=true
+ros2 launch revd_lidar_bringup simulation.launch.py world:=house fixed_frame:=map
+```
+
+```bash
+ros2 launch revd_lidar_navigation slam.launch.py
 ```
 
 ```bash
 mkdir -p $HOME/ros2_ws/src/revD_lidar/data/maps && ros2 run nav2_map_server map_saver_cli -f $HOME/ros2_ws/src/revD_lidar/data/maps/house
 ```
 
-Scripted run instead of teleop: start the same launch with the world's `spawn` from `revd_lidar_tools/config/slam_routes.yaml`, then `slam_eval` drives the route through the safety chain, writes `truth.tum`, `slam.tum`, `ekf.tum`, saves `map.pgm`/`map.yaml` and exits 0 when the route is done:
+`map_saver_cli` writes only the image for AMCL. slam_toolbox localization also needs the pose graph:
 
 ```bash
-ros2 run revd_lidar_tools slam_eval --ros-args -p use_sim_time:=true -p world:=house -p output_dir:=$HOME/ros2_ws/src/revD_lidar/data/slam/house
+ros2 service call /slam_toolbox/serialize_map slam_toolbox/srv/SerializePoseGraph "{filename: '$HOME/ros2_ws/src/revD_lidar/data/maps/house'}"
+```
+
+Scripted run instead of teleop: start the same two launches with the world's `spawn` from `revd_lidar_tools/config/slam_routes.yaml`, then `slam_eval` drives the route through the safety chain, writes `truth.tum`, `slam.tum`, `ekf.tum`, saves `map.pgm`/`map.yaml` and `map.posegraph`/`map.data`, and exits 0 when the route is done:
+
+```bash
+ros2 run revd_lidar_tools slam_eval --ros-args -p use_sim_time:=true -p world:=house -p output_dir:=$HOME/ros2_ws/src/revD_lidar/data/maps/house
 ```
 
 Reference grid (the world's walls and legs cut at the scan-plane height of `laser_link`, as a Nav2 map) and the map score against it (`--spawn` = the spawn pose; `--plot` draws both):
 
 ```bash
-ros2 run revd_lidar_tools world_grid $(ros2 pkg prefix revd_lidar_gazebo)/share/revd_lidar_gazebo/worlds/house.sdf data/slam/house/reference
+ros2 run revd_lidar_tools world_grid $(ros2 pkg prefix revd_lidar_gazebo)/share/revd_lidar_gazebo/worlds/house.sdf data/maps/house/reference
 ```
 
 ```bash
-ros2 run revd_lidar_tools map_score data/slam/house/map.yaml data/slam/house/reference.yaml --spawn 0 0 0 --plot data/slam/house/map_vs_reference.png
+ros2 run revd_lidar_tools map_score data/maps/house/map.yaml data/maps/house/reference.yaml --spawn 0 0 0 --plot data/maps/house/map_vs_reference.png
 ```
 
 Trajectory error with evo (pinned, run through `uvx`; `-a` aligns the map frame to the world):
 
 ```bash
-uvx --from evo==1.31.1 evo_ape tum data/slam/house/truth.tum data/slam/house/slam.tum -a --t_max_diff 0.05
+uvx --from evo==1.31.1 evo_ape tum data/maps/house/truth.tum data/maps/house/slam.tum -a --t_max_diff 0.05
 ```
 
 ```bash
-uvx --from evo==1.31.1 evo_rpe tum data/slam/house/truth.tum data/slam/house/slam.tum -a --t_max_diff 0.05 --delta 1 --delta_unit m
+uvx --from evo==1.31.1 evo_rpe tum data/maps/house/truth.tum data/maps/house/slam.tum -a --t_max_diff 0.05 --delta 1 --delta_unit m
+```
+
+### Localization and Nav2
+
+Start the simulation, then localization on a saved map (`map` is the path without extension: `<map>.yaml` for AMCL, `<map>.posegraph` for `localization:=slam_toolbox`; `initial_x`, `initial_y`, `initial_yaw` give the starting guess in the map frame, which is the mapping run's spawn pose), then Nav2. Click goals with RViz's 2D Goal Pose; 2D Pose Estimate re-seeds AMCL.
+
+```bash
+ros2 launch revd_lidar_bringup simulation.launch.py world:=house fixed_frame:=map
+```
+
+```bash
+ros2 launch revd_lidar_navigation localization.launch.py map:=$HOME/ros2_ws/src/revD_lidar/data/maps/house/map
+```
+
+```bash
+ros2 launch revd_lidar_navigation nav2.launch.py
+```
+
+Score localization while something else drives (`slam_eval` with `-p estimate:=loc -p save_map:=false` drives the mapping route and records `loc.tum`; `loc_score`: no alignment, the map frame is the spawn pose; `--spawn` if it was not 0 0 0):
+
+```bash
+ros2 run revd_lidar_tools loc_score data/loc/truth.tum data/loc/loc.tum
+```
+
+Seeded Nav2 goals (`nav_eval`: 20 goals drawn from the world's reference grid, scored on ground truth, writes `nav_eval.json` and the true path `truth.tum`; start the three launches above headless first). Score on a 1 cm reference, since the governor stops 3 cm short:
+
+```bash
+mkdir -p data/nav/house && ros2 run revd_lidar_tools world_grid $(ros2 pkg prefix revd_lidar_gazebo)/share/revd_lidar_gazebo/worlds/house.sdf data/nav/house/reference --resolution 0.01
+```
+
+```bash
+ros2 run revd_lidar_tools nav_eval --ros-args -p use_sim_time:=true -p reference:=data/nav/house/reference.yaml -p seed:=1 -p output_dir:=data/nav/house
 ```
 
 ## Tests
@@ -156,4 +210,10 @@ Bringup: the wheel-contact check and the `test_sensor_topics` and `test_safety_c
 
 ```bash
 colcon test --executor sequential --packages-select revd_lidar_bringup && colcon test-result --test-result-base build/revd_lidar_bringup --verbose
+```
+
+Navigation: `test_nav2` (simulation + AMCL on the world's reference grid + Nav2; the local costmap must hold the scan's obstacles; one goal, teleop holding zero mid-goal must stop the robot; about 3 min):
+
+```bash
+colcon test --executor sequential --packages-select revd_lidar_navigation && colcon test-result --test-result-base build/revd_lidar_navigation --verbose
 ```

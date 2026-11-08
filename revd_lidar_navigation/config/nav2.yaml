@@ -1,0 +1,236 @@
+# Nav2 on a saved map (nav2.launch.py, beside localization.launch.py).
+# Goals in map, from RViz's Goal Pose. Output: controller_server ->
+# /cmd_vel_nav (TwistStamped) -> twist_mux -> safety_governor, so teleop
+# overrides it and the governor still limits it. Servers: planner,
+# controller, behavior (wait only), bt_navigator. No smoother, velocity
+# smoother or collision monitor: the governor is the safety net.
+# Adapted from revD_ardu's mapless config: map frame, a static layer and a
+# /scan obstacle layer instead of the ToF/camera voxel layer, no rotation
+# shim and no forward preference (the 360 deg LiDAR needs no facing).
+
+bt_navigator:
+  ros__parameters:
+    global_frame: map
+    robot_base_frame: base_footprint
+    odom_topic: /odometry/filtered
+    bt_loop_duration: 10
+    default_server_timeout: 20
+    wait_for_service_timeout: 1000
+    navigators: ["navigate_to_pose"]
+    navigate_to_pose:
+      plugin: "nav2_bt_navigator::NavigateToPoseNavigator"
+    # default_nav_to_pose_bt_xml: config/navigate.xml, set in the launch.
+    error_code_names: ["compute_path_error_code", "follow_path_error_code"]
+
+controller_server:
+  ros__parameters:
+    controller_frequency: 20.0
+    odom_topic: /odometry/filtered
+    enable_stamped_cmd_vel: true
+    min_x_velocity_threshold: 0.001
+    min_y_velocity_threshold: 0.001
+    min_theta_velocity_threshold: 0.001
+    failure_tolerance: 0.3
+    progress_checker_plugins: ["progress_checker"]
+    goal_checker_plugins: ["goal_checker"]
+    controller_plugins: ["FollowPath"]
+    # The governor creeps at 0.03 m/s near walls: 0.3 m in 15 s is still
+    # progress.
+    progress_checker:
+      plugin: "nav2_controller::SimpleProgressChecker"
+      required_movement_radius: 0.3
+      movement_time_allowance: 15.0
+    goal_checker:
+      plugin: "nav2_controller::SimpleGoalChecker"
+      stateful: true
+      xy_goal_tolerance: 0.15
+      yaw_goal_tolerance: 0.25
+    FollowPath:
+      plugin: "nav2_mppi_controller::MPPIController"
+      motion_model: "Omni"
+      # model_dt = the control period. Horizon 56 x 0.05 s x 0.3 m/s =
+      # 0.84 m, inside the 3 m local costmap.
+      time_steps: 56
+      model_dt: 0.05
+      batch_size: 1000
+      iteration_count: 1
+      # Below the governor's 0.45 m/s cap; every direction alike.
+      vx_max: 0.3
+      vx_min: -0.3
+      vy_max: 0.3
+      wz_max: 1.5
+      ax_max: 1.5
+      ax_min: -1.5
+      ay_max: 1.5
+      ay_min: -1.5
+      az_max: 3.0
+      vx_std: 0.2
+      vy_std: 0.2
+      wz_std: 0.4
+      temperature: 0.3
+      gamma: 0.015
+      prune_distance: 1.0
+      transform_tolerance: 0.1
+      visualize: false
+      regenerate_noises: true
+      # No PathAngleCritic or PreferForwardCritic: the heading along the path
+      # does not matter. TwirlingCritic stops it spinning on the way.
+      critics: ["ConstraintCritic", "CostCritic", "GoalCritic",
+                "GoalAngleCritic", "PathAlignCritic", "PathFollowCritic",
+                "TwirlingCritic"]
+      ConstraintCritic:
+        enabled: true
+        cost_power: 1
+        cost_weight: 4.0
+      GoalCritic:
+        enabled: true
+        cost_power: 1
+        cost_weight: 5.0
+        threshold_to_consider: 1.0
+      GoalAngleCritic:
+        enabled: true
+        cost_power: 1
+        cost_weight: 3.0
+        threshold_to_consider: 0.5
+      # The hull is a rectangle, not a circle: check the footprint.
+      CostCritic:
+        enabled: true
+        cost_power: 1
+        cost_weight: 3.81
+        near_collision_cost: 253
+        critical_cost: 300.0
+        consider_footprint: true
+        collision_cost: 1000000.0
+        near_goal_distance: 0.5
+        trajectory_point_step: 2
+      PathAlignCritic:
+        enabled: true
+        cost_power: 1
+        cost_weight: 14.0
+        max_path_occupancy_ratio: 0.05
+        trajectory_point_step: 4
+        threshold_to_consider: 0.5
+        offset_from_furthest: 20
+        use_path_orientations: false
+      PathFollowCritic:
+        enabled: true
+        cost_power: 1
+        cost_weight: 5.0
+        offset_from_furthest: 5
+        threshold_to_consider: 1.0
+      TwirlingCritic:
+        enabled: true
+        cost_power: 1
+        cost_weight: 10.0
+
+planner_server:
+  ros__parameters:
+    expected_planner_frequency: 1.0
+    planner_plugins: ["GridBased"]
+    # Nav2's planner for circular and omnidirectional robots.
+    GridBased:
+      plugin: "nav2_smac_planner::SmacPlanner2D"
+      tolerance: 0.125
+      downsample_costmap: false
+      allow_unknown: true
+      max_iterations: 1000000
+      max_on_approach_iterations: 1000
+      max_planning_time: 2.0
+      cost_travel_multiplier: 2.0
+      use_final_approach_orientation: false
+
+# Wait only: no Spin or BackUp until braking and clearance are known on the
+# real robot (navigate.xml).
+behavior_server:
+  ros__parameters:
+    local_frame: odom
+    global_frame: map
+    robot_base_frame: base_footprint
+    local_costmap_topic: local_costmap/costmap_raw
+    global_costmap_topic: global_costmap/costmap_raw
+    local_footprint_topic: local_costmap/published_footprint
+    global_footprint_topic: global_costmap/published_footprint
+    cycle_frequency: 10.0
+    behavior_plugins: ["wait"]
+    wait:
+      plugin: "nav2_behaviors::Wait"
+
+# Rolling 3 x 3 m round the robot, from /scan only. Unknown counts as free:
+# MPPI scores unknown as lethal.
+local_costmap:
+  local_costmap:
+    ros__parameters:
+      global_frame: odom
+      robot_base_frame: base_footprint
+      update_frequency: 5.0
+      publish_frequency: 2.0
+      rolling_window: true
+      width: 3
+      height: 3
+      resolution: 0.05
+      track_unknown_space: false
+      # safety_governor's hull with wheels (half_length, half_width).
+      footprint: "[[0.15, 0.11], [0.15, -0.11], [-0.15, -0.11], [-0.15, 0.11]]"
+      plugins: ["obstacle_layer", "inflation_layer"]
+      obstacle_layer:
+        plugin: "nav2_costmap_2d::ObstacleLayer"
+        observation_sources: scan
+        scan:
+          topic: /scan
+          data_type: LaserScan
+          marking: true
+          clearing: true
+          # Per-source default is 0.0, which drops every return: scan points
+          # sit at the laser_link height.
+          max_obstacle_height: 2.0
+          obstacle_max_range: 2.5
+          raytrace_max_range: 3.0
+      # Inscribed 0.11 m, circumscribed 0.19 m. A wide, gentle gradient
+      # keeps plans in the middle of free space: with revD_ardu's 0.3 m and
+      # factor 8 the plan hugged the centre column, MPPI cut the corner to
+      # 1 cm, and the governor held it there until Nav2 gave up.
+      inflation_layer:
+        plugin: "nav2_costmap_2d::InflationLayer"
+        inflation_radius: 0.55
+        cost_scaling_factor: 4.0
+      always_send_full_costmap: true
+
+# The saved map plus what /scan sees now, sized to the map.
+global_costmap:
+  global_costmap:
+    ros__parameters:
+      global_frame: map
+      robot_base_frame: base_footprint
+      update_frequency: 2.0
+      publish_frequency: 1.0
+      resolution: 0.05
+      track_unknown_space: true
+      footprint: "[[0.15, 0.11], [0.15, -0.11], [-0.15, -0.11], [-0.15, 0.11]]"
+      plugins: ["static_layer", "obstacle_layer", "inflation_layer"]
+      static_layer:
+        plugin: "nav2_costmap_2d::StaticLayer"
+        map_subscribe_transient_local: true
+      obstacle_layer:
+        plugin: "nav2_costmap_2d::ObstacleLayer"
+        observation_sources: scan
+        scan:
+          topic: /scan
+          data_type: LaserScan
+          marking: true
+          clearing: true
+          # Per-source default is 0.0, which drops every return: scan points
+          # sit at the laser_link height.
+          max_obstacle_height: 2.0
+          obstacle_max_range: 5.0
+          raytrace_max_range: 6.0
+      inflation_layer:
+        plugin: "nav2_costmap_2d::InflationLayer"
+        inflation_radius: 0.55
+        cost_scaling_factor: 4.0
+      always_send_full_costmap: true
+
+lifecycle_manager_navigation:
+  ros__parameters:
+    autostart: true
+    node_names: ["controller_server", "planner_server", "behavior_server",
+                 "bt_navigator"]
